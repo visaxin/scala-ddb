@@ -7,11 +7,13 @@ import com.sksamuel.elastic4s.source.JsonDocumentSource
 import models.Repo
 import play.Logger
 import play.api.cache.{CacheApi, NamedCache}
-import play.api.libs.json.Json
+import play.api.libs.json.{JsArray, JsResult, Json}
 import play.api.mvc._
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.play.json._
 import services.EsClient
+
+import scala.concurrent.Future
 
 /**
   * This controller creates an `Action` to handle HTTP requests to the
@@ -41,55 +43,78 @@ class DataController @Inject()(val reactiveMongoApi: ReactiveMongoApi,
         "repoName" -> repoName,
         "appId" -> appId
       )
-      var r  = cache.get(repoName + appId)
-      if (r.isEmpty) {
-        collection.flatMap(_.find(selector).one[Repo]).map {
-          case Some(s) => r = s
-          case None => NotFound
+      val cacheKey = repoName + "-" + appId
+      val opRepo: Option[Repo] = cache.get(cacheKey)
+      if(opRepo.isEmpty){
+        Logger.debug("cache miss! get repo info from mongo!")
+        collection.flatMap(_.find(selector).one[Repo].map{
+          case Some(r) => {
+            cache.set(cacheKey,r)
+            esClient.client.execute {
+              index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(request.body.toString())
+            }.map {
+              s => if (s.isCreated) Ok else InternalServerError("cannot post data")
+            }
+            Ok
+          }
+          case _ => NotFound(Json.obj("message"->"not found for required repo info"))
+        })
+      }else{
+        Logger.debug("cache hit!")
+        val r = opRepo.get
+        val userData: JsResult[JsArray] = request.body.validate[JsArray]
+        val indexRes: Seq[Future[Result]] = userData.asOpt.get.value.map {
+          j =>
+            Logger.debug("to index",j)
+            esClient.client.execute {
+              index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(Json.stringify(Json.toJson(j)))
+            }.map {
+              s => if (s.created) Ok else InternalServerError("cannot post data")
+            }
         }
-        cache.set(repoName + appId, r)
-        Logger.debug("found from from")
-      } else {
-        r = cache.get(repoName + appId).asInstanceOf[Repo]
-        Logger.debug("found from cache")
-
+        Ok
       }
-      esClient.client.execute {
-        index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(request.body.toString())
-      }.map {
-        s => if (s.isCreated) Ok else InternalServerError("cannot post data")
-      }
-    //
-    //      repoInstance.map {
-    //        case Some(ri) =>
-    //          val r = ri.asInstanceOf[Repo]
-    //          esClient.client.execute {
-    //            index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(request.body.toString())
-    //          }.map {
-    //            s => if (s.isCreated) Ok else InternalServerError("cannot post data")
-    //          }
-    //          Ok
-    //        case _ => InternalServerError
-    //      }
-
-
-    //      repo.map{
-    //        case Some(r) => {
-    //          esClient.client.execute {
-    //            index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(request.body.toString())
-    //          }.map{
-    //            s => if(s.isCreated) Ok else InternalServerError("cannot post data")
-    //          }
-    //          Ok
-    //        }
-    //        case None =>
-    //          Logger.debug("not found!!")
-    //
-    //          NotFound(Json.obj("message" -> "not found"))
-    //        case _ =>
-    //          InternalServerError
-    //      }
   }
+
+
+//  def postDataUsingBulk(repoName: String) = Action.async(parse.json) {
+//    implicit request =>
+//      val appId = request.headers.get(Constant.AppID)
+//      val selector = Json.obj(
+//        "repoName" -> repoName,
+//        "appId" -> appId
+//      )
+//      val cacheKey = repoName + "-" + appId
+//      val opRepo: Option[Repo] = cache.get(cacheKey)
+//      if(opRepo.isEmpty){
+//        Logger.debug("cache miss! get repo info from mongo!")
+//        collection.flatMap(_.find(selector).one[Repo].map{
+//          case Some(r) => {
+//            cache.set(cacheKey,r)
+//            val ops = request.body.validate[Seq[Map[String,Any]]].map{
+//              s =>
+//                index into r.repoName / (r.repoName + r.appId) src StringDocumentSource(Json.toJson(s).toString())
+//            }
+//
+//            esClient.client.execute {
+//
+//            }.map {
+//              s => if (s.isCreated) Ok else InternalServerError("cannot post data")
+//            }data
+//            Ok
+//          }
+//          case _ => NotFound(Json.obj("message"->"not found for required repo info"))
+//        })
+//      }else{
+//        Logger.debug("cache hit!")
+//        val r = opRepo.get
+//        esClient.client.execute {
+//          index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(request.body.toString)
+//        }.map {
+//          s => if (s.isCreated) Ok else InternalServerError("cannot post data")
+//        }
+//      }
+//  }
 
 
   case class IndexNameAndType(indexName: String, typeName: String)

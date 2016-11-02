@@ -16,6 +16,7 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test
 )
 
+fork in run := false
 
 libraryDependencies += "com.sksamuel.elastic4s" %% "elastic4s-core" % "2.3.0"
 

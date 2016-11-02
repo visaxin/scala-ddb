@@ -65,4 +65,7 @@ class PostMongoRepo(reactiveMongoApi: ReactiveMongoApi) extends PostRepo {
 
 }
 
+object PostRepo{
+}
+
 

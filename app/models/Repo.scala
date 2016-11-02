@@ -8,6 +8,9 @@ import play.api.libs.json._
 /**
   * Created by $Jason.Zhang on 10/28/16.
   */
+
+case class DataPoint(key:String,value:Object)
+case class DataPoints(dataPoints: Seq[Map[String,Any]])
 case class Schema(key:String,sType:String)
 
 case class FlumeInfo(hosts: List[String], status: Int)
@@ -35,6 +38,10 @@ case class Repo(appId: String,
                 repoName: String)
 
 object Repo {
+  implicit val dataPointFormat = Json.format[DataPoint]
+  implicit val dataPointReads = Json.reads[DataPoint]
+  implicit val dataPointsFormat = Json.format[DataPoints]
+  implicit val dataPointsReads = Json.reads[DataPoints]
   implicit val schemaReads = Json.format[Schema]
   implicit val flumeInfoReads = Json.format[FlumeInfo]
   implicit val producerInfo = Json.format[ProducerInfo]
