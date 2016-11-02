@@ -6,13 +6,16 @@ import play.modules.reactivemongo.json.collection.JSONCollection
 import reactivemongo.api.ReadPreference
 import reactivemongo.api.commands.WriteResult
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.play.json._, collection._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
+
 trait PostRepo {
   def find()(implicit ec: ExecutionContext): Future[List[JsObject]]
 
+//  def find(selector: reactivemongo.play.json.collection.JSONCollection)(implicit ec: ExecutionContext): Future[List[JsObject]]
   def find(selector: BSONDocument)(implicit ec: ExecutionContext): Future[List[JsObject]]
 
   // default ascending
@@ -47,6 +50,8 @@ class PostMongoRepo(reactiveMongoApi: ReactiveMongoApi) extends PostRepo {
   def save(document: BSONDocument)(implicit ec: ExecutionContext): Future[WriteResult] =
     collection.flatMap(_.update(BSONDocument("_id" -> document.get("_id").getOrElse(BSONObjectID.generate)), document, upsert = true))
 
+//  def find(selector: reactivemongo.play.json.collection.JSONCollection)(implicit ec: ExecutionContext): Future[List[JsObject]] =
+//    collection.flatMap(_.find(selector).cursor[JsObject](ReadPreference.Primary).collect[List]())
   def find(selector: BSONDocument)(implicit ec: ExecutionContext): Future[List[JsObject]] =
     collection.flatMap(_.find(selector).cursor[JsObject](ReadPreference.Primary).collect[List]())
 

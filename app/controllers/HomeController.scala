@@ -3,7 +3,7 @@ package controllers
 import javax.inject._
 
 import db.PostMongoRepo
-import models.{Person, PersonResource}
+import models.{Person, PersonResource, Repo}
 import play.Logger
 import play.api.libs.json._
 import play.api.mvc._
@@ -36,8 +36,8 @@ class HomeController @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends C
 
   def index = Action.async {
 
-//    val repoList = collection.flatMap(_.find(Json.obj()).cursor[Person]().collect[List]())
-    def cl =  new PostMongoRepo(reactiveMongoApi)
+    //    val repoList = collection.flatMap(_.find(Json.obj()).cursor[Person]().collect[List]())
+    def cl = new PostMongoRepo(reactiveMongoApi)
     val repoList = cl.find()
     val repoArray = repoList.map {
       repo =>
@@ -66,13 +66,13 @@ class HomeController @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends C
 
   def find(name: String) = Action.async {
     val json = Json.obj(
-      "name" -> name
+      "repo_name" -> name
     )
-    val repoList = collection.flatMap(_.find(json).cursor[Person]().collect[List]())
+    val repoList = collection.flatMap(_.find(json).cursor[Repo]().collect[List]())
 
     val repoArray = repoList.map {
-      repo =>
-        Json.arr(repo)
+      r =>
+        Json.arr(r)
     }
 
     repoArray.map {
@@ -98,7 +98,7 @@ class HomeController @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends C
 
   def createByBody = Action.async(parse.json) {
     implicit request => {
-      request.body.validate[Person].map {
+      request.body.validate[Repo].map {
         p =>
           collection.flatMap(_.insert(p).map {
             lastError =>
@@ -108,6 +108,5 @@ class HomeController @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends C
       }.getOrElse(Future.successful(BadRequest("invalid json")))
     }
   }
-
-
 }
+

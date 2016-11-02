@@ -27,3 +27,6 @@ POST /repo2 controllers.HomeController.createByBody
 
 GET /repo2/:name controllers.HomeController.find(name:String)
 GET /repo2/age/:age controllers.HomeController.findByAge(age:Int)
+
+
+POST /repo/:repoName/data controllers.DataController.postData(repoName:String)
