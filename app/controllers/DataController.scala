@@ -7,13 +7,11 @@ import com.sksamuel.elastic4s.source.JsonDocumentSource
 import models.Repo
 import play.Logger
 import play.api.cache.{CacheApi, NamedCache}
-import play.api.libs.json.{JsArray, JsResult, Json}
+import play.api.libs.json.Json
 import play.api.mvc._
 import play.modules.reactivemongo.{MongoController, ReactiveMongoApi, ReactiveMongoComponents}
 import reactivemongo.play.json._
 import services.EsClient
-
-import scala.concurrent.Future
 
 /**
   * This controller creates an `Action` to handle HTTP requests to the
@@ -44,8 +42,8 @@ class DataController @Inject()(val reactiveMongoApi: ReactiveMongoApi,
         "appId" -> appId
       )
       val cacheKey = repoName + "-" + appId
-      val opRepo: Option[Repo] = cache.get(cacheKey)
-      if(opRepo.isEmpty){
+      val optRepo: Option[Repo] = cache.get(cacheKey)
+      if(optRepo.isEmpty){
         Logger.debug("cache miss! get repo info from mongo!")
         collection.flatMap(_.find(selector).one[Repo].map{
           case Some(r) => {
@@ -61,18 +59,22 @@ class DataController @Inject()(val reactiveMongoApi: ReactiveMongoApi,
         })
       }else{
         Logger.debug("cache hit!")
-        val r = opRepo.get
-        val userData: JsResult[JsArray] = request.body.validate[JsArray]
-        val indexRes: Seq[Future[Result]] = userData.asOpt.get.value.map {
-          j =>
-            Logger.debug("to index",j)
-            esClient.client.execute {
-              index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(Json.stringify(Json.toJson(j)))
-            }.map {
-              s => if (s.created) Ok else InternalServerError("cannot post data")
-            }
+        val r = optRepo.get
+        esClient.client.execute {
+          index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(Json.stringify(Json.toJson(r)))
+        }.map {
+          s => if (s.created) Ok else InternalServerError("cannot post data")
         }
-        Ok
+//        val userData: JsResult[JsArray] = request.body.validate[JsArray]
+//        val indexRes: Seq[Future[Result]] = userData.asOpt.get.value.map {
+//          j =>
+//            Logger.debug("to index",j)
+//            esClient.client.execute {
+//              index into r.repoName / (r.repoName + r.appId) doc JsonDocumentSource(Json.stringify(Json.toJson(j)))
+//            }.map {
+//              s => if (s.created) Ok else InternalServerError("cannot post data")
+//            }
+//        }
       }
   }
 
@@ -91,16 +93,11 @@ class DataController @Inject()(val reactiveMongoApi: ReactiveMongoApi,
 //        collection.flatMap(_.find(selector).one[Repo].map{
 //          case Some(r) => {
 //            cache.set(cacheKey,r)
-//            val ops = request.body.validate[Seq[Map[String,Any]]].map{
-//              s =>
-//                index into r.repoName / (r.repoName + r.appId) src StringDocumentSource(Json.toJson(s).toString())
-//            }
-//
 //            esClient.client.execute {
-//
+//              bulk()
 //            }.map {
 //              s => if (s.isCreated) Ok else InternalServerError("cannot post data")
-//            }data
+//            }
 //            Ok
 //          }
 //          case _ => NotFound(Json.obj("message"->"not found for required repo info"))
@@ -115,7 +112,6 @@ class DataController @Inject()(val reactiveMongoApi: ReactiveMongoApi,
 //        }
 //      }
 //  }
-
 
   case class IndexNameAndType(indexName: String, typeName: String)
 

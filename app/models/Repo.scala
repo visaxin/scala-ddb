@@ -35,13 +35,14 @@ case class ProducerInfo(status: Int, custom: Int, batchSize: Int, taskSize: Int,
 //                updateTime: Date)
 case class Repo(appId: String,
                 region: Option[String],
+                schema: List[Map[String,String]],
                 repoName: String)
 
 object Repo {
-  implicit val dataPointFormat = Json.format[DataPoint]
-  implicit val dataPointReads = Json.reads[DataPoint]
-  implicit val dataPointsFormat = Json.format[DataPoints]
-  implicit val dataPointsReads = Json.reads[DataPoints]
+//  implicit val dataPointFormat = Json.format[DataPoint]
+//  implicit val dataPointReads = Json.reads[DataPoint]
+//  implicit val dataPointsFormat = Json.format[DataPoints]
+//  implicit val dataPointsReads = Json.reads[DataPoints]
   implicit val schemaReads = Json.format[Schema]
   implicit val flumeInfoReads = Json.format[FlumeInfo]
   implicit val producerInfo = Json.format[ProducerInfo]

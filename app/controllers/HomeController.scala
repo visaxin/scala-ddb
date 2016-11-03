@@ -2,6 +2,7 @@ package controllers
 
 import javax.inject._
 
+import akka.event.slf4j
 import db.PostMongoRepo
 import models.{Person, PersonResource, Repo}
 import play.Logger
@@ -96,7 +97,7 @@ class HomeController @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends C
     }
   }
 
-  def createByBody = Action.async(parse.json) {
+  def createRepo = Action.async(parse.json) {
     implicit request => {
       request.body.validate[Repo].map {
         p =>
@@ -105,7 +106,22 @@ class HomeController @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends C
               Logger.debug(s"create person ok! $lastError")
               Created
           })
-      }.getOrElse(Future.successful(BadRequest("invalid json")))
+      }.getOrElse(Future.successful(BadRequest(Json.toJson("invalid json").toString())))
+    }
+  }
+
+  def testListMap = Action {
+    implicit request => {
+//      val js =
+//      request.body.
+      request.body.asJson.get.as[List[Map[String,String]]].map(_.map{
+        case (x:String,y:String) => {
+          Logger.debug(s"x is$x, y is $y")
+        }
+      }
+      )
+      val s = List(Map("key"-> "value","key2"->"string"))
+      Ok(Json.stringify(Json.toJson(s)))
     }
   }
 }

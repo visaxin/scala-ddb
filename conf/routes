@@ -23,10 +23,13 @@ GET /repo controllers.RepoController.list
 
 POST /repo2/:name/:age controllers.HomeController.create(name:String,age:Int)
 
-POST /repo2 controllers.HomeController.createByBody
+POST /repo2 controllers.HomeController.createRepo
 
 GET /repo2/:name controllers.HomeController.find(name:String)
 GET /repo2/age/:age controllers.HomeController.findByAge(age:Int)
 
 
 POST /repo/:repoName/data controllers.DataController.postData(repoName:String)
+
+
+POST /test controllers.HomeController.testListMap
